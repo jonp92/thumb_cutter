@@ -3,11 +3,12 @@ import base64
 import re
 import time
 import shutil
+import configparser
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 class FileHandler(FileSystemEventHandler):
-    def on_created(self, event):
+    def on_modified(self, event):
         if event.is_directory:
             return
         
@@ -15,7 +16,7 @@ class FileHandler(FileSystemEventHandler):
             with open(event.src_path, 'r') as f:
                 data = f.read()
             
-            pattern = r'thumbnail begin 500x500(.+?)thumbnail end'
+            pattern = r'thumbnail begin 500x500 \d{5}(.+?)\r\n;thumbnail end'
             match = re.search(pattern, data, re.DOTALL)
             if match:
                 thumbnail_data = match.group(1).strip()
@@ -26,16 +27,29 @@ class FileHandler(FileSystemEventHandler):
                 match = re.search(pattern, data)
                 if match:
                     filename = match.group(1).strip()
-                    output_path = os.path.join('/home/pi/printer_data/gcodes/thumbs', filename + '.png')
+                    output_path = os.path.join(output_dir, filename + '.png')
                     
                     with open(output_path, 'wb') as f:
                         f.write(thumbnail_data)
                     print(f'Saved thumbnail as {output_path}')
 
 if __name__ == '__main__':
+	# Read the configuration file
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    
+    # Get the directory paths from the configuration file
+    input_dir = config.get('directories', 'input_dir')
+    output_dir = config.get('directories', 'output_dir')
+    
+    # Create the FileHandler and Observer objects
     event_handler = FileHandler()
     observer = Observer()
-    observer.schedule(event_handler, '/home/pi/printer_data/gcodes', recursive=True)
+    
+    # Schedule the observer to monitor the input directory
+    observer.schedule(event_handler, input_dir, recursive=True)
+    
+    # Start the observer
     observer.start()
     
     try:
