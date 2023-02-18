@@ -16,14 +16,14 @@ class FileHandler(FileSystemEventHandler):
             with open(event.src_path, 'r') as f:
                 data = f.read()
             
-            pattern = r'thumbnail begin 500x500 \d{5}(.+?)\r\n;thumbnail end'
+            pattern = r'; thumbnail begin.* \d{5}(.+); thumbnail end'
             match = re.search(pattern, data, re.DOTALL)
             if match:
                 thumbnail_data = match.group(1).strip()
-                thumbnail_data = re.sub(r'^;', '', thumbnail_data, flags=re.MULTILINE)
+                thumbnail_data = re.sub(r'^; ', '', thumbnail_data, flags=re.MULTILINE)
                 thumbnail_data = base64.b64decode(thumbnail_data)
                 
-                pattern = r';filename: (.+?)/'
+                pattern = r';filename:(.+?)/'
                 match = re.search(pattern, data)
                 if match:
                     filename = match.group(1).strip()
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     observer = Observer()
     
     # Schedule the observer to monitor the input directory
-    observer.schedule(event_handler, input_dir, recursive=True)
+    observer.schedule(event_handler, path=input_dir, recursive=True)
     
     # Start the observer
     observer.start()
