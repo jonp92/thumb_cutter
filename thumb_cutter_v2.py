@@ -8,7 +8,7 @@ from watchdog.events import FileSystemEventHandler
 
 
 class FileHandler(FileSystemEventHandler):
-    def on_modified(self, event):
+    def on_created(self, event):
         if event.is_directory:
             return
 
@@ -16,7 +16,7 @@ class FileHandler(FileSystemEventHandler):
             with open(event.src_path, 'r') as f:
                 data = f.read()
 
-            pattern = r'; thumbnail begin.* \d{5,}(.+); thumbnail end'
+            pattern = r'; thumbnail begin 500x500 \d{5,}(.+); thumbnail end'
             match = re.search(pattern, data, re.DOTALL)
             if match:
                 thumbnail_data = match.group(1).strip()
