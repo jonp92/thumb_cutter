@@ -8,7 +8,7 @@ from watchdog.events import FileSystemEventHandler
 
 
 class FileHandler(FileSystemEventHandler):
-    def on_created(self, event):
+    def on_modified(self, event):
         if event.is_directory:
             return
 
@@ -16,7 +16,7 @@ class FileHandler(FileSystemEventHandler):
             with open(event.src_path, 'r') as f:
                 data = f.read()
 
-            pattern = r'; thumbnail begin.* \d{6}(.+); thumbnail end'
+            pattern = r'; thumbnail begin.* \d{5,}(.+); thumbnail end'
             match = re.search(pattern, data, re.DOTALL)
             if match:
                 thumbnail_data = match.group(1).strip()
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     observer = Observer()
 
     # Schedule the observer to monitor the input directory
-    observer.schedule(event_handler, path=input_dir, recursive=True)
+    observer.schedule(event_handler, input_dir, recursive=True)
 
     # Start the observer
     observer.start()
