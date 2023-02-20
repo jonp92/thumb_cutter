@@ -1,3 +1,4 @@
+![Flexi-Rex-improved](https://user-images.githubusercontent.com/35941065/220163684-c806fe24-13ac-4221-b86e-5c6fe68b9d73.png)
 # thumb_cutter
 A small Python program to strip thumbnails from .gcode files and save them as a .png. Then it will upload to a server using SCP.
 
