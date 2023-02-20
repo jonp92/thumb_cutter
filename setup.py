@@ -4,7 +4,7 @@ setup(
     name='thumb_cutter',
     version='v.1',
     packages=['thumb_cutter'],
-    url='https://github.com/jonp92/thumb-cutter',
+    url='https://github.com/jonp92/thumb_cutter',
     license='MIT',
     author='Jonathan Pressler',
     author_email='jonathan@pressler.tech',
