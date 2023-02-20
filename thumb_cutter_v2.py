@@ -32,16 +32,20 @@ class FileHandler(FileSystemEventHandler):
                 thumbnail_data = re.sub(r'^; ', '', thumbnail_data, flags=re.MULTILINE)
                 thumbnail_data = base64.b64decode(thumbnail_data)
 
-                # Then write the file and print a success message.
-                output_path = os.path.join(output_dir, f'{tmpfilename}.png')
+                # Find the filename from the gcode between ;filename:example.gcode/ Save this and document.
+                pattern = r';filename:(.+?)/'
+                match = re.search(pattern, data)
+                if match:
+                    filename = match.group(1).strip()
+                    output_path = os.path.join(output_dir, filename + '.png')
 
-                with open(output_path, 'wb') as f:
-                    f.write(thumbnail_data)
-                print(f'Saved thumbnail as {output_path}')
+                    with open(output_path, 'wb') as f:
+                        f.write(thumbnail_data)
+                    print(f'Saved thumbnail as {output_path}')
 
                 # Copy the file to the remote server using scp
-                scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
-                subprocess.run(scp_command)
+                    scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
+                    subprocess.run(scp_command)
 
 
 # this method preprocesses any existing file in the input_dir and uploads then to a directory.
@@ -67,13 +71,16 @@ def create_thumbnails():
                     filename = match.group(1).strip()
                     output_path = os.path.join(preprocess_dir, filename + '.png')
 
-                    with open(output_path, 'wb') as f:
-                        f.write(thumbnail_data)
-                    print(f'Saved thumbnail as {output_path}')
+                    if not os.path.exists(output_path):
+                        with open(output_path, 'wb') as f:
+                            f.write(thumbnail_data)
+                        print(f'Saved thumbnail as {output_path}')
 
-                # Copy the file to the remote server using scp
-                    scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
-                    subprocess.run(scp_command)
+                        # Copy the file to the remote server using scp
+                        scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
+                        subprocess.run(scp_command)
+                    else:
+                        print(f'Thumbnail already exists for {filename}')
 
 
 if __name__ == '__main__':
@@ -91,9 +98,6 @@ if __name__ == '__main__':
     server = config.get('remote', 'server')
     remote_dir = config.get('remote', 'remote_dir')
     port = config.get('remote', 'port', fallback='22')
-
-    # get filename for moonraker workaround
-    tmpfilename = config.get('output', 'filename', fallback='thumbnail')
 
     # Create the output directory if it does not exist
     os.makedirs(output_dir, exist_ok=True)
