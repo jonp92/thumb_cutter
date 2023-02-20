@@ -5,6 +5,7 @@ import re
 import time
 import configparser
 import subprocess
+import logging
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -20,7 +21,7 @@ class FileHandler(FileSystemEventHandler):
         if event.src_path.endswith('.gcode'):
             with open(event.src_path, 'r') as f:
                 data = f.read()
-
+            logging.info('New .gcode file created, searching for png base64.')
             # regex pattern to find data between thumbnail begin 500x500 plus any number 5 digits or longer
             # and thumbnail end. Then sub out all ; for "" and pipe data into base64 to be decoded
             # and stored in thumbnail_data.
@@ -28,6 +29,7 @@ class FileHandler(FileSystemEventHandler):
             pattern = r'; thumbnail begin 500x500 \d{5,}(.+); thumbnail end'
             match = re.search(pattern, data, re.DOTALL)
             if match:
+                logging.info('Thumbnail data found and copied, now to strip and decode using base64')
                 thumbnail_data = match.group(1).strip()
                 thumbnail_data = re.sub(r'^; ', '', thumbnail_data, flags=re.MULTILINE)
                 thumbnail_data = base64.b64decode(thumbnail_data)
@@ -41,11 +43,12 @@ class FileHandler(FileSystemEventHandler):
 
                     with open(output_path, 'wb') as f:
                         f.write(thumbnail_data)
-                    print(f'Saved thumbnail as {output_path}')
+                    logging.info(f'Saved thumbnail as {output_path}')
 
                 # Copy the file to the remote server using scp
                     scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
                     subprocess.run(scp_command)
+                    logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}.png')
 
 
 # this method preprocesses any existing file in the input_dir and uploads then to a directory.
@@ -56,10 +59,11 @@ def create_thumbnails():
             input_path = os.path.join(input_dir, filename)
             with open(input_path, 'r') as f:
                 data = f.read()
-
+            logging.info('.gcode file found, searching for png base64.')
             pattern = r'; thumbnail begin 500x500 \d{5,}(.+); thumbnail end'
             match = re.search(pattern, data, re.DOTALL)
             if match:
+                logging.info('Thumbnail data found and copied, now to strip and decode using base64')
                 thumbnail_data = match.group(1).strip()
                 thumbnail_data = re.sub(r'^; ', '', thumbnail_data, flags=re.MULTILINE)
                 thumbnail_data = base64.b64decode(thumbnail_data)
@@ -74,19 +78,27 @@ def create_thumbnails():
                     if not os.path.exists(output_path):
                         with open(output_path, 'wb') as f:
                             f.write(thumbnail_data)
-                        print(f'Saved thumbnail as {output_path}')
+                        logging.info('Saved thumbnail as {output_path}')
 
                         # Copy the file to the remote server using scp
                         scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
                         subprocess.run(scp_command)
+                        logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}')
                     else:
-                        print(f'Thumbnail already exists for {filename}')
+                        logging.info(f'Thumbnail already exists for {filename}.png')
+    logging.info('Thumbnail preprocessing completed')
 
 
 if __name__ == '__main__':
+
     # Read the configuration file
     config = configparser.ConfigParser()
     config.read('config.ini')
+
+    # Setup logging
+    log_dir = config.get('directories', 'log_dir', fallback='thumb_cutter.log')
+    logging.basicConfig(filename=f'{log_dir}/thumb_cutter.log', encoding='utf-8', level=logging.INFO,
+                        format='%(levelname)s %(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p -')
 
     # Get the directory paths from the configuration file
     input_dir = config.get('directories', 'input_dir')
@@ -104,6 +116,7 @@ if __name__ == '__main__':
     os.makedirs(preprocess_dir, exist_ok=True)
 
     # Create thumbnails for all existing files in the input directory
+    logging.info('Thumbnail preprocessor starting')
     create_thumbnails()
 
     # Create the FileHandler and Observer objects
@@ -114,6 +127,7 @@ if __name__ == '__main__':
     observer.schedule(event_handler, input_dir, recursive=True)
 
     # Start the observer
+    logging.info('File Observer has started')
     observer.start()
 
     try:
