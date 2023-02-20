@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     # Read the configuration file
     config = configparser.ConfigParser()
-    config.read('config.ini')
+    config.read('config.conf')
 
     # Setup logging
     log_dir = config.get('directories', 'log_dir', fallback='thumb_cutter.log')
