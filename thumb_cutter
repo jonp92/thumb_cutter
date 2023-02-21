@@ -45,13 +45,15 @@ class FileHandler(FileSystemEventHandler):
                         f.write(thumbnail_data)
                     logging.info(f'Saved thumbnail as {output_path}')
 
-                # Copy the file to the remote server using scp
-                    scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
-                    subprocess.run(scp_command)
-                    logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}.png')
+                # Copy the file to the remote server using scp if upload is enable in the config file
+                    if config.getboolean('remote', 'upload_enabled', fallback=True):
+                        logging.info('SCP Upload Enabled, proceeding to upload.')
+                        scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
+                        subprocess.run(scp_command)
+                        logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}.png')
 
 
-# this method preprocesses any existing file in the input_dir and uploads then to a directory.
+# this method preprocesses any existing file in the input_dir, saves them, and finally uploads them to a directory.
 
 def create_thumbnails():
     for filename in os.listdir(input_dir):
@@ -73,17 +75,22 @@ def create_thumbnails():
                 match = re.search(pattern, data)
                 if match:
                     filename = match.group(1).strip()
-                    output_path = os.path.join(preprocess_dir, filename + '.png')
+                    output_path = os.path.join(output_dir, filename + '.png')
 
                     if not os.path.exists(output_path):
                         with open(output_path, 'wb') as f:
                             f.write(thumbnail_data)
                         logging.info('Saved thumbnail as {output_path}')
 
-                        # Copy the file to the remote server using scp
-                        scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
-                        subprocess.run(scp_command)
-                        logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}')
+                    # Copy the file to the remote server using scp if upload is enable in the config file
+                        if config.getboolean('remote', 'upload_enabled', fallback=True):
+                            logging.info('SCP Upload Enabled, proceeding to upload.')
+                            scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
+                            subprocess.run(scp_command)
+                            logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}.png')
+                            scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
+                            subprocess.run(scp_command)
+                            logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}.png')
                     else:
                         logging.info(f'Thumbnail already exists for {filename}.png')
     logging.info('Thumbnail preprocessing completed')
@@ -96,14 +103,13 @@ if __name__ == '__main__':
     config.read('config.conf')
 
     # Setup logging
-    log_dir = config.get('directories', 'log_dir', fallback='thumb_cutter.log')
+    log_dir = config.get('directories', 'log_dir', fallback='~')
     logging.basicConfig(filename=f'{log_dir}/thumb_cutter.log', encoding='utf-8', level=logging.INFO,
                         format='%(levelname)s %(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p -')
 
     # Get the directory paths from the configuration file
     input_dir = config.get('directories', 'input_dir')
     output_dir = config.get('directories', 'output_dir', fallback='~/.thumb_cutter/thumbs')
-    preprocess_dir = config.get('directories', 'preprocess_dir', fallback='~/.thumb_cutter/thumbs')
 
     # Get scp username, server, remote_dir, and port
     username = config.get('remote', 'username')
@@ -113,7 +119,6 @@ if __name__ == '__main__':
 
     # Create the output directory if it does not exist
     os.makedirs(output_dir, exist_ok=True)
-    os.makedirs(preprocess_dir, exist_ok=True)
 
     # Create thumbnails for all existing files in the input directory
     logging.info('Thumbnail preprocessor starting')
