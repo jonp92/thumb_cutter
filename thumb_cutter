@@ -40,17 +40,21 @@ class FileHandler(FileSystemEventHandler):
                 if match:
                     filename = match.group(1).strip()
                     output_path = os.path.join(output_dir, filename + '.png')
+                else:
+                    # If filename is not found, use input filename with .png extension
+                    filename = os.path.basename(event.src_path).replace('.gcode', '.png').replace(' ', '-')
+                    output_path = os.path.join(output_dir, filename)
 
-                    with open(output_path, 'wb') as f:
-                        f.write(thumbnail_data)
-                    logging.info(f'Saved thumbnail as {output_path}')
+                with open(output_path, 'wb') as f:
+                    f.write(thumbnail_data)
+                logging.info(f'Saved thumbnail as {output_path}')
 
                 # Copy the file to the remote server using scp if upload is enable in the config file
-                    if config.getboolean('remote', 'upload_enabled', fallback=True):
-                        logging.info('SCP Upload Enabled, proceeding to upload.')
-                        scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
-                        subprocess.run(scp_command)
-                        logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}.png')
+                if config.getboolean('remote', 'upload_enabled', fallback=True):
+                    logging.info('SCP Upload Enabled, proceeding to upload.')
+                    scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
+                    subprocess.run(scp_command)
+                    logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}')
 
 
 # this method preprocesses any existing file in the input_dir, saves them, and finally uploads them to a directory.
@@ -62,7 +66,7 @@ def create_thumbnails():
             with open(input_path, 'r') as f:
                 data = f.read()
             logging.info('.gcode file found, searching for png base64.')
-            pattern = r'; thumbnail begin 500x500 \d{5,}(.+); thumbnail end'
+            pattern = r'; thumbnail begin \d{3,}x\d{3,} \d{3,}(.+); thumbnail end'
             match = re.search(pattern, data, re.DOTALL)
             if match:
                 logging.info('Thumbnail data found and copied, now to strip and decode using base64')
@@ -76,23 +80,23 @@ def create_thumbnails():
                 if match:
                     filename = match.group(1).strip()
                     output_path = os.path.join(output_dir, filename + '.png')
+                else:
+                    # If filename is not found, use input filename with .png extension
+                    filename = os.path.basename(filename).replace('.gcode', '.png').replace(' ', '-')
+                    output_path = os.path.join(output_dir, filename)
 
-                    if not os.path.exists(output_path):
-                        with open(output_path, 'wb') as f:
-                            f.write(thumbnail_data)
-                        logging.info('Saved thumbnail as {output_path}')
+                if not os.path.exists(output_path):
+                    with open(output_path, 'wb') as f:
+                        f.write(thumbnail_data)
+                    logging.info('Saved thumbnail as {output_path}')
 
-                    # Copy the file to the remote server using scp if upload is enable in the config file
-                        if config.getboolean('remote', 'upload_enabled', fallback=True):
-                            logging.info('SCP Upload Enabled, proceeding to upload.')
-                            scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
-                            subprocess.run(scp_command)
-                            logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}.png')
-                            scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
-                            subprocess.run(scp_command)
-                            logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}.png')
-                    else:
-                        logging.info(f'Thumbnail already exists for {filename}.png')
+                # Copy the file to the remote server using scp if upload is enable in the config file
+                    if config.getboolean('remote', 'upload_enabled', fallback=True):
+                        logging.info('SCP Upload Enabled, proceeding to upload.')
+                        scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
+                        subprocess.run(scp_command)
+                else:
+                    logging.info(f'Thumbnail already exists for {filename}.png')
     logging.info('Thumbnail preprocessing completed')
 
 
