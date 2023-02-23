@@ -26,8 +26,9 @@ class FileHandler(FileSystemEventHandler):
             # and thumbnail end. Then sub out all ; for "" and pipe data into base64 to be decoded
             # and stored in thumbnail_data.
 
-            pattern = r'; thumbnail begin 500x500 \d{5,}(.+); thumbnail end'
+            pattern = r'; thumbnail begin \d{3,}x{3,} \d{3,}(.+); thumbnail end'
             match = re.search(pattern, data, re.DOTALL)
+
             if match:
                 logging.info('Thumbnail data found and copied, now to strip and decode using base64')
                 thumbnail_data = match.group(1).strip()
@@ -55,9 +56,11 @@ class FileHandler(FileSystemEventHandler):
                     scp_command = ['scp', '-P', port, output_path, f'{username}@{server}:{remote_dir}']
                     subprocess.run(scp_command)
                     logging.info(f'Uploaded thumbnail to {server}:{remote_dir} with filename {filename}')
-
+            else:
+                logging.info(f'no base64 .png data encoded in {event.src_path}')
 
 # this method preprocesses any existing file in the input_dir, saves them, and finally uploads them to a directory.
+
 
 def create_thumbnails():
     for filename in os.listdir(input_dir):
@@ -97,6 +100,8 @@ def create_thumbnails():
                         subprocess.run(scp_command)
                 else:
                     logging.info(f'Thumbnail already exists for {filename}.png')
+            else:
+                logging.info(f'no base64 .png data encoded in {filename}')
     logging.info('Thumbnail preprocessing completed')
 
 
